@@ -22,10 +22,12 @@ This is a one-stop-solution for people who want to deploy their AI models as cos
 - Command-Line Interface (CLI): Created a comprehensive CLI tool that allows users to manage models, deployments, and analytics from the terminal. The CLI provides commands for uploading models, optimizing them, creating deployments, and viewing cost and performance analytics.
 - RESTful API: Implemented a complete API using FastAPI that exposes all platform functionality through well-defined endpoints. The API includes routes for model management, deployment operations, and analytics, making it easy to integrate with other systems.
 - Web Dashboard: Developed an interactive web dashboard using Next.js with Tailwind CSS that provides visual analytics and management capabilities. featuring:
-a. Cost analysis with comparative charts
-b. Performance metrics and anomaly detection
-c. Usage forecasting for capacity planning
-d. Optimization suggestions with actionable recommendations
+
+
+- Cost analysis with comparative charts
+- Performance metrics and anomaly detection
+- Usage forecasting for capacity planning
+- Optimization suggestions with actionable recommendations
 
 # 4. All three interfaces provide consistent access to the platform's core features:
 
