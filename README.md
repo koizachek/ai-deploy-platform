@@ -2,7 +2,7 @@
 ***Website is coming***
 This is a one-stop-solution for people who want to deploy their AI models as cost effectively as possible.
 
-five comprehensive design documents that cover all aspects of the platform:
+five comprehensive design documents cover all aspects of the platform:
 
 - System Architecture: A high-level overview of the entire platform with components, data flows, and implementation approach.
 - Model Deployment Pipeline: Detailed design of the pipeline for uploading, optimizing, containerizing, and deploying AI models.
