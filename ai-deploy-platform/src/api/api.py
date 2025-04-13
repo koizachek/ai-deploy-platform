@@ -484,4 +484,8 @@ async def create_deployment(request: CreateDeploymentRequest):
         # Validate deployment type
         try:
             deployment_type = DeploymentType(request.deployment_type)
-     <response clipped><NOTE>To save on context only part of this file has been shown to you. You should retry this tool after you have searched inside the file with `grep -n` in order to find the line numbers of what you are looking for.</NOTE>
+        except Exception as e:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Invalid deployment type: {str(e)}"
+            )
