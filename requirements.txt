@@ -22,7 +22,7 @@ kubernetes==26.1.0
 kopf==1.35.6
 
 # Serverless integration
-modal-client==0.50.2  →  modal-client==0.50.3005
+modal-client==0.50.3005
 boto3==1.26.115  # For AWS Lambda
 google-cloud-functions==1.13.0
 
