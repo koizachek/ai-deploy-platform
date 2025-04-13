@@ -484,9 +484,342 @@ async def create_deployment(request: CreateDeploymentRequest):
         # Validate deployment type
         try:
             deployment_type = DeploymentType(request.deployment_type)
-        except Exception as e:
+        except ValueError:
             raise HTTPException(
                 status_code=400,
-                detail=f"Invalid deployment type: {str(e)}"
+                detail=f"Invalid deployment type: {request.deployment_type}",
             )
-        pass
+        
+        # Create resource requirements
+        resource_requirements = ResourceRequirements(
+            cpu=request.resource_requirements.cpu,
+            memory=request.resource_requirements.memory,
+            gpu=request.resource_requirements.gpu,
+            timeout=request.resource_requirements.timeout,
+        )
+        
+        # Create scaling policy
+        scaling_policy = ScalingPolicy(
+            min_instances=request.scaling_policy.min_instances,
+            max_instances=request.scaling_policy.max_instances,
+            target_cpu_utilization=request.scaling_policy.target_cpu_utilization,
+        )
+        
+        # Create cost optimization policy
+        cost_optimization_policy = CostOptimizationPolicy(
+            use_spot_instances=request.cost_optimization_policy.use_spot_instances,
+            hibernation_enabled=request.cost_optimization_policy.hibernation_enabled,
+            hibernation_idle_timeout=request.cost_optimization_policy.hibernation_idle_timeout,
+            multi_cloud_enabled=request.cost_optimization_policy.multi_cloud_enabled,
+        )
+        
+        # Create deployment
+        deployment_id = str(uuid.uuid4())
+        deployment = Deployment(
+            id=deployment_id,
+            name=request.name,
+            model_id=request.model_id,
+            model_type=request.model_type,
+            deployment_type=deployment_type,
+            status=DeploymentStatus.CREATING,
+            resource_requirements=resource_requirements,
+            scaling_policy=scaling_policy,
+            cost_optimization_policy=cost_optimization_policy,
+            created_at=datetime.datetime.utcnow(),
+            updated_at=datetime.datetime.utcnow(),
+            metadata=request.metadata,
+        )
+        
+        # Save deployment
+        deployment_service.create_deployment(deployment)
+        
+        # Start deployment in background
+        # In a real implementation, this would be done asynchronously
+        # For this implementation, we'll simulate deployment
+        
+        # Simulate deployment
+        import threading
+        
+        def deploy():
+            try:
+                # Simulate deployment delay
+                import time
+                
+                time.sleep(5)
+                
+                # Update deployment
+                deployment.status = DeploymentStatus.RUNNING
+                deployment.endpoint = f"https://api.ai-deploy-platform.example.com/deployments/{deployment_id}/predict"
+                deployment.updated_at = datetime.datetime.utcnow()
+                
+                # Save deployment
+                deployment_service.update_deployment(deployment)
+            
+            except Exception as e:
+                # Update deployment with error
+                deployment.status = DeploymentStatus.FAILED
+                deployment.updated_at = datetime.datetime.utcnow()
+                deployment.metadata["error"] = str(e)
+                
+                # Save deployment
+                deployment_service.update_deployment(deployment)
+        
+        # Start deployment thread
+        threading.Thread(target=deploy).start()
+        
+        return {
+            "id": deployment.id,
+            "name": deployment.name,
+            "model_id": deployment.model_id,
+            "model_type": deployment.model_type,
+            "deployment_type": deployment.deployment_type.value,
+            "status": deployment.status.value,
+            "endpoint": deployment.endpoint,
+            "resource_requirements": deployment.resource_requirements.dict(),
+            "scaling_policy": deployment.scaling_policy.dict(),
+            "cost_optimization_policy": deployment.cost_optimization_policy.dict(),
+            "created_at": deployment.created_at.isoformat(),
+            "updated_at": deployment.updated_at.isoformat(),
+            "metadata": deployment.metadata,
+        }
+    
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.put("/deployments/{deployment_id}", response_model=DeploymentResponse)
+async def update_deployment(deployment_id: str, request: UpdateDeploymentRequest):
+    """Update a deployment."""
+    try:
+        # Get deployment
+        deployment = deployment_service.get_deployment(deployment_id)
+        if not deployment:
+            raise HTTPException(status_code=404, detail="Deployment not found")
+        
+        # Update deployment
+        if request.resource_requirements:
+            deployment.resource_requirements = ResourceRequirements(
+                cpu=request.resource_requirements.cpu,
+                memory=request.resource_requirements.memory,
+                gpu=request.resource_requirements.gpu,
+                timeout=request.resource_requirements.timeout,
+            )
+        
+        if request.scaling_policy:
+            deployment.scaling_policy = ScalingPolicy(
+                min_instances=request.scaling_policy.min_instances,
+                max_instances=request.scaling_policy.max_instances,
+                target_cpu_utilization=request.scaling_policy.target_cpu_utilization,
+            )
+        
+        if request.cost_optimization_policy:
+            deployment.cost_optimization_policy = CostOptimizationPolicy(
+                use_spot_instances=request.cost_optimization_policy.use_spot_instances,
+                hibernation_enabled=request.cost_optimization_policy.hibernation_enabled,
+                hibernation_idle_timeout=request.cost_optimization_policy.hibernation_idle_timeout,
+                multi_cloud_enabled=request.cost_optimization_policy.multi_cloud_enabled,
+            )
+        
+        if request.metadata:
+            deployment.metadata.update(request.metadata)
+        
+        deployment.updated_at = datetime.datetime.utcnow()
+        
+        # Save deployment
+        deployment_service.update_deployment(deployment)
+        
+        return {
+            "id": deployment.id,
+            "name": deployment.name,
+            "model_id": deployment.model_id,
+            "model_type": deployment.model_type,
+            "deployment_type": deployment.deployment_type.value,
+            "status": deployment.status.value,
+            "endpoint": deployment.endpoint,
+            "resource_requirements": deployment.resource_requirements.dict(),
+            "scaling_policy": deployment.scaling_policy.dict(),
+            "cost_optimization_policy": deployment.cost_optimization_policy.dict(),
+            "created_at": deployment.created_at.isoformat(),
+            "updated_at": deployment.updated_at.isoformat(),
+            "metadata": deployment.metadata,
+        }
+    
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.delete("/deployments/{deployment_id}")
+async def delete_deployment(deployment_id: str):
+    """Delete a deployment."""
+    try:
+        # Get deployment
+        deployment = deployment_service.get_deployment(deployment_id)
+        if not deployment:
+            raise HTTPException(status_code=404, detail="Deployment not found")
+        
+        # Delete deployment
+        deployment_service.delete_deployment(deployment)
+        
+        return {"message": f"Deployment {deployment_id} deleted successfully"}
+    
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/deployments/{deployment_id}/stop")
+async def stop_deployment(deployment_id: str):
+    """Stop a deployment."""
+    try:
+        # Get deployment
+        deployment = deployment_service.get_deployment(deployment_id)
+        if not deployment:
+            raise HTTPException(status_code=404, detail="Deployment not found")
+        
+        # Check if deployment is already stopped
+        if deployment.status == DeploymentStatus.STOPPED:
+            return {"message": f"Deployment {deployment_id} is already stopped"}
+        
+        # Update deployment
+        deployment.status = DeploymentStatus.STOPPED
+        deployment.updated_at = datetime.datetime.utcnow()
+        
+        # Save deployment
+        deployment_service.update_deployment(deployment)
+        
+        return {"message": f"Deployment {deployment_id} stopped successfully"}
+    
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/deployments/{deployment_id}/start")
+async def start_deployment(deployment_id: str):
+    """Start a deployment."""
+    try:
+        # Get deployment
+        deployment = deployment_service.get_deployment(deployment_id)
+        if not deployment:
+            raise HTTPException(status_code=404, detail="Deployment not found")
+        
+        # Check if deployment is already running
+        if deployment.status == DeploymentStatus.RUNNING:
+            return {"message": f"Deployment {deployment_id} is already running"}
+        
+        # Update deployment
+        deployment.status = DeploymentStatus.STARTING
+        deployment.updated_at = datetime.datetime.utcnow()
+        
+        # Save deployment
+        deployment_service.update_deployment(deployment)
+        
+        # Start deployment in background
+        # In a real implementation, this would be done asynchronously
+        # For this implementation, we'll simulate deployment
+        
+        # Simulate deployment
+        import threading
+        
+        def start():
+            try:
+                # Simulate deployment delay
+                import time
+                
+                time.sleep(5)
+                
+                # Update deployment
+                deployment.status = DeploymentStatus.RUNNING
+                deployment.updated_at = datetime.datetime.utcnow()
+                
+                # Save deployment
+                deployment_service.update_deployment(deployment)
+            
+            except Exception as e:
+                # Update deployment with error
+                deployment.status = DeploymentStatus.FAILED
+                deployment.updated_at = datetime.datetime.utcnow()
+                deployment.metadata["error"] = str(e)
+                
+                # Save deployment
+                deployment_service.update_deployment(deployment)
+        
+        # Start deployment thread
+        threading.Thread(target=start).start()
+        
+        return {"message": f"Deployment {deployment_id} starting..."}
+    
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# Metrics and analytics routes
+@app.get("/deployments/{deployment_id}/metrics")
+async def get_deployment_metrics(
+    deployment_id: str,
+    start_time: Optional[str] = Query(None),
+    end_time: Optional[str] = Query(None),
+    metrics: List[str] = Query(["cpu", "memory", "requests"]),
+):
+    """Get deployment metrics."""
+    try:
+        # Get deployment
+        deployment = deployment_service.get_deployment(deployment_id)
+        if not deployment:
+            raise HTTPException(status_code=404, detail="Deployment not found")
+        
+        # Parse time range
+        try:
+            start = datetime.datetime.fromisoformat(start_time) if start_time else datetime.datetime.utcnow() - datetime.timedelta(hours=1)
+            end = datetime.datetime.fromisoformat(end_time) if end_time else datetime.datetime.utcnow()
+        except ValueError:
+            raise HTTPException(status_code=400, detail="Invalid time format")
+        
+        # Get metrics
+        try:
+            metrics_data = monitoring_service.get_metrics(deployment, metrics, start, end)
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=f"Failed to get metrics: {str(e)}")
+        
+        return metrics_data
+    
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/deployments/{deployment_id}/analytics")
+async def get_deployment_analytics(
+    deployment_id: str,
+    start_time: Optional[str] = Query(None),
+    end_time: Optional[str] = Query(None),
+    metrics: List[str] = Query(["requests", "latency", "error_rate", "cost"]),
+):
+    """Get deployment analytics."""
+    try:
+        # Get deployment
+        deployment = deployment_service.get_deployment(deployment_id)
+        if not deployment:
+            raise HTTPException(status_code=404, detail="Deployment not found")
+        
+        # Parse time range
+        try:
+            start = datetime.datetime.fromisoformat(start_time) if start_time else datetime.datetime.utcnow() - datetime.timedelta(days=7)
+            end = datetime.datetime.fromisoformat(end_time) if end_time else datetime.datetime.utcnow()
+        except ValueError:
+            raise HTTPException(status_code=400, detail="Invalid time format")
+        
+        # Get analytics
+        try:
+            analytics_data = analytics_service.get_analytics(deployment, metrics, start, end)
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=f"Failed to get analytics: {str(e)}")
+        
+        return analytics_data
+    
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# Start the app for development
+if __name__ == "__main__":
+    import uvicorn
+    
+    uvicorn.run(app, host="0.0.0.0", port=8000)
